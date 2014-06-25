@@ -250,13 +250,41 @@ def action_callback_destroy(args, config):
     # 5. Remove directories
     __clean_filesystem(args, config)
 
+def __check_site_status(args, config, out):
+    pass
+
+def __vhost_add_alias(args, config):
+
+    temp_hosts = __backup_file()
+    cmd = ['sed', '-i', "'/%s/d'" % args.domain, '/etc/hosts']
+    proc = subprocess.Popen(' '.join(cmd), shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = proc.communicate()
+    debug(out)
+    debug(err)
+    debug(proc.returncode)
+    __log_info_backup_hosts(temp_hosts, hosts_file)
+
 def action_callback_alias(args, config):
     """
     1. Check if the main domain exists
     2. Add the alias to VHost
     3. Reload Apache
-    3. Add entry in /etc/hosts
+    4. Add entry in /etc/hosts
     """
+    # 1. Check if the main domain exists
+    site_status = __check_site_status(args, config, out)
+    if site_status is not SiteStatus.ENABLED
+        warning(['The requested site %s is not enabled' % args.domain, 'a2query output: %s' %s out])
+        exit()
+    # 2. Add the alias
+    __vhost_add_alias(args, config)
+
+    # 3. Reload Apache
+    __reload_apache(args, config)
+
+    # 4. Add entry to /etc/hosts
+    __add_hosts_entry(args, config)
+
     pass
 
 action_callbacks = {
