@@ -13,6 +13,7 @@ siteup command
 **Commands:**
 
 * **info**: show information on the provided <domain-name>.
+* **add**: add a new configuration for <domain-name>.
 
 
 TODO: REMOVE OLD STUFF
