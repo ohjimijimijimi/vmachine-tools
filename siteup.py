@@ -4,6 +4,7 @@ from __future__ import print_function
 from vmlib.log import log,warning,error,debug, emptyline
 from vmlib.lib import enum
 from vmlib.jsonconfig import JSONConfig
+from vmlib.options import Options
 import sup.info
 import json
 import argparse
@@ -49,6 +50,8 @@ if args.root is None:
 siteroot = os.path.join(args.root, args.siteroot)
 
 hosts_file = '/etc/hosts'
+
+
 
 
 #debug(args)
@@ -288,20 +291,11 @@ def action_callback_alias(args, config):
     # 4. Add entry to /etc/hosts
     __add_hosts_entry(args, config)
 
-def action_callback_info(args, config):
-    info = sup.info.apache(args, config)
-    info += sup.info.documentroot(args, config)
-    #info += sup.info.database(args, config)
-    #info += sup.info.archive(args, config)
-
-    log(info)
-    emptyline()
-
 action_callbacks = {
         Actions.CREATE: action_callback_create,
         Actions.DESTROY: action_callback_destroy,
         Actions.ALIAS: action_callback_alias,
-        Actions.INFO: action_callback_info
+        Actions.INFO: sup.info.callback
         }
 
 def record_site(info):
@@ -320,11 +314,20 @@ def remember_site(domain):
 
 check_configuration(args)
 config = JSONConfig(os.path.join(args.config, 'config'))
+o = Options()
+o.site.root = os.path.join(args.root, args.siteroot)
+o.site.domain = args.domain
+o.project.root = args.root
+o.command = args.command
+o.filehosts = '/etc/hosts'
+o.config = config.getDict()
+o.args = vars(args)
+print(o)
 
-log('Executing {t.bold}{t.green}%s {t.normal}on {t.bold}{t.yellow}%s' % (args.command, args.domain))
+log('Executing {t.bold}{t.green}%s {t.normal}on {t.bold}{t.yellow}%s' % (o.command, o.site.domain))
 emptyline()
 
-if args.command in action_callbacks:
-    action_callbacks[args.command](args, config)
+if o.command in action_callbacks:
+    action_callbacks[o.command](o)
 else:
     error('Command %s don\'t recognized.' % action)
