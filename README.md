@@ -3,9 +3,19 @@ vmachine-tools
 
 Python scripts to help daily work with virtual machines
 
-siteup command:
+siteup command
 --------------
 
+**Usage:**
+
+    `siteup <command> <domain-name>`
+
+**Commands:**
+
+* **info**: show information on the provided <domain-name>.
+
+
+TODO: REMOVE OLD STUFF
 * siteup <domain-name>
 * siteup <domain-name> --destroy
 * siteup <domain-name> --redo
