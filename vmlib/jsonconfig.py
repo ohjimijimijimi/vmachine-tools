@@ -10,7 +10,7 @@ class JSONConfig:
         with open(self.path, 'r') as f:
             self.data = json.load(f)
         f.closed
-        debug(self.data)
+        #debug(self.data)
 
     def get(self, key):
         """

@@ -2,8 +2,9 @@
 
 from __future__ import print_function
 from vmlib.log import log,warning,error,debug, emptyline
-from vmlib.lib import enum_auto
+from vmlib.lib import enum
 from vmlib.jsonconfig import JSONConfig
+import sup.info
 import json
 import argparse
 import os
@@ -12,11 +13,12 @@ import subprocess
 import uuid
 import time
 
-Actions = enum_auto('CREATE', 'DESTROY', 'RECREATE', 'ALIAS')
+Actions = enum(CREATE='add', DESTROY='remove', ALIAS='alias', INFO='info')
 
 parser = argparse.ArgumentParser(
     description='Install the environment for a new site under Apache 2 - Ubuntu',
     epilog='!!! REMEMBER: TO RUN THIS SCRIPT YOU MUST HAVE ROOT PRIVILEGES !!!')
+parser.add_argument('command', metavar='COMMAND', help='the command to execute')
 parser.add_argument('domain', metavar='DOMAIN', help='the domain name eg. example.com')
 parser.add_argument('--root', help='the root folder of you project')
 parser.add_argument('--siteroot', help='the folder for your site root', default='site')
@@ -24,6 +26,7 @@ parser.add_argument('--destroy', help='destroy an existing site', action='store_
 parser.add_argument('--redo', help='rewrite an existing site', action='store_true')
 parser.add_argument('--config', help='configuration folder', default=os.path.expanduser('~/.siteup'))
 parser.add_argument('--alias', help='add the domain as an alias to')
+parser.add_argument('--info', help='show information about the domain')
 
 # Need to be root
 euid = os.geteuid()
@@ -48,7 +51,7 @@ siteroot = os.path.join(args.root, args.siteroot)
 hosts_file = '/etc/hosts'
 
 
-debug(args)
+#debug(args)
 
 def __fix_permission(path, mode, uid, gid):
     os.mkdir(path, mode)
@@ -100,18 +103,18 @@ def check_configuration(args):
         f.close()
 
 
-def get_action(args):
-    # default action is create
-    if args.redo is False and args.destroy is False and args.alias is None:
-        return Actions.CREATE
-    elif args.destroy is True:
-        return Actions.DESTROY
-    elif args.redo is True:
-        return Actions.RECREATE
-    elif args.alias is not None:
-        return Actions.ALIAS
-    else:
-        return Actions.CREATE
+#def get_action(args):
+#     default action is create
+#    if args.redo is False and args.destroy is False and args.alias is None:
+#        return Actions.CREATE
+#    elif args.destroy is True:
+#        return Actions.DESTROY
+#    elif args.redo is True:
+#        return Actions.RECREATE
+#    elif args.alias is not None:
+#        return Actions.ALIAS
+#    else:
+#        return Actions.CREATE
 
 def action_callback_create(args, config):
     """
@@ -272,9 +275,9 @@ def action_callback_alias(args, config):
     4. Add entry in /etc/hosts
     """
     # 1. Check if the main domain exists
-    site_status = __check_site_status(args, config, out)
-    if site_status is not SiteStatus.ENABLED
-        warning(['The requested site %s is not enabled' % args.domain, 'a2query output: %s' %s out])
+    site_status = __check_site_status(args, config)
+    if site_status is not SiteStatus.ENABLED:
+        warning('The requested site %s is not enabled' % args.domain)
         exit()
     # 2. Add the alias
     __vhost_add_alias(args, config)
@@ -285,13 +288,20 @@ def action_callback_alias(args, config):
     # 4. Add entry to /etc/hosts
     __add_hosts_entry(args, config)
 
-    pass
+def action_callback_info(args, config):
+    info = sup.info.apache(args, config)
+    info += sup.info.documentroot(args, config)
+    #info += sup.info.database(args, config)
+    #info += sup.info.archive(args, config)
+
+    log(info)
+    emptyline()
 
 action_callbacks = {
         Actions.CREATE: action_callback_create,
         Actions.DESTROY: action_callback_destroy,
-        Actions.RECREATE: action_callback_recreate,
-        Actions.ALIAS: action_callback_alias
+        Actions.ALIAS: action_callback_alias,
+        Actions.INFO: action_callback_info
         }
 
 def record_site(info):
@@ -310,13 +320,11 @@ def remember_site(domain):
 
 check_configuration(args)
 config = JSONConfig(os.path.join(args.config, 'config'))
-debug(config)
-debug(config.get('apache'))
-debug(config.get('apache.config_path'))
-debug(config.get('apache.vhost_dir'))
-debug(config.get('vhost_template'))
 
-action = get_action(args)
-debug('action: %d' % action)
+log('Executing {t.bold}{t.green}%s {t.normal}on {t.bold}{t.yellow}%s' % (args.command, args.domain))
+emptyline()
 
-action_callbacks[action](args, config)
+if args.command in action_callbacks:
+    action_callbacks[args.command](args, config)
+else:
+    error('Command %s don\'t recognized.' % action)
