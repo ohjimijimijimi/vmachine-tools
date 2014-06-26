@@ -50,4 +50,4 @@ def debug(message):
     log(message, LogStatus.DEBUG)
 
 def emptyline():
-    print('')
+    print('{t.normal}'.format(t=t))

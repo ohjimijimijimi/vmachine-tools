@@ -1,7 +1,12 @@
+import os
+import vmlib.lib
+from vmlib.log import log,error,emptyline
+import sup.hosts
+import sup.apache
 
-
-def action_callback_create(args, config, options):
+def callback(options):
     """
+    0. Check if command create could be executed
     1. Make the folders
     2. Fix permissions
     3. Build the VHost
@@ -9,40 +14,40 @@ def action_callback_create(args, config, options):
     5. Reload Apache
     6. Add the entry into local /etc/hosts
     """
-    sitepath = os.path.join(args.root, args.siteroot)
+
+    # 0. Check if command create could be executed
+    verify_environment(options)
 
     # 1. Make the folders
-    os.makedirs(os.path.join(args.root, args.siteroot))
+    os.makedirs(options.site.root)
 
     # 2. Fix permissions
-    os.chmod(args.root, 0775)
-    os.chmod(sitepath, 0775)
-    os.chown(args.root, login_uid, login_gid)
-    os.chown(sitepath, login_uid, login_gid)
+    vmlib.lib.fix_permission(options.project.root, 0775, options.user.uid, options.user.gid)
 
-    # 3. Build VHost
-    with open(os.path.join(args.config, config.get('vhost_template')), 'r') as f:
-        vhosttpl = f.read()
-        vhost_data = vhosttpl.format(domain=args.domain, documentroot=sitepath, mail='webmaster@localhost')
-        vh = open(os.path.join(config.get('apache.config_path'), config.get('apache.vhost_dir'), args.domain + '.conf'), 'w')
-        print(vhost_data, file=vh)
-        vh.close()
-    f.closed
+    # 3. Build VHost file
+    sup.hosts.clone_tpl(options)
 
     # 4. Enable the site
-    __enable_site(args, config)
+    sup.apache.site_enable(options)
 
     # 5. Reload Apache
-    __reload_apache(args, config)
+    sup.apache.server_reload(options)
 
     # 6. Add entry to /etc/hosts
-    hosts_file = '/etc/hosts'
-    temp_hosts = os.path.join('/tmp', 'hosts__' + str(uuid.uuid1()))
-    shutil.copyfile(hosts_file, temp_hosts)
-    with open(hosts_file, 'a') as hosts:
-        print('127.0.0.1\t%s' % args.domain, file=hosts)
-    f.closed
-    log(['You can restore the previous version of /etc/hosts executing:', '\tsudo mv %s %s' % (temp_hosts, hosts_file)])
-    emptyline()
-    log('Now you can access to %s from your browser.' % args.domain)
+    sup.hosts.entry_add(options)
 
+    emptyline()
+    log('Now you can access to http://%s from your browser.' % options.site.domain)
+    emptyline()
+
+def verify_environment(options):
+    """
+    Verify if command create could be executed
+    1. check directories
+    """
+
+    # 1. check directories
+    if os.path.exists(options.project.root):
+        error(['Cannot execute command {t.green}%s{t.red}.' % options.command, 'A site named {t.yellow}%s{t.red} seems to exist already.' % options.site.domain, 'It\'s better you take a look before making some mistakes!'])
+        emptyline()
+        raise Exception('Site already exists')

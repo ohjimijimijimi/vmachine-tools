@@ -6,6 +6,7 @@ from vmlib.lib import enum
 from vmlib.jsonconfig import JSONConfig
 from vmlib.options import Options
 import sup.info
+import sup.create
 import json
 import argparse
 import os
@@ -38,10 +39,6 @@ if euid is not 0:
 
 args = parser.parse_args()
 
-# get login user uid
-login = os.getlogin()
-login_uid = int(os.popen("id -u %s" % login).read().strip())
-login_gid = int(os.popen("id -g %s" % login).read().strip())
 
 # set default root based on domain
 if args.root is None:
@@ -292,7 +289,7 @@ def action_callback_alias(args, config):
     __add_hosts_entry(args, config)
 
 action_callbacks = {
-        Actions.CREATE: action_callback_create,
+        Actions.CREATE: sup.create.callback,
         Actions.DESTROY: action_callback_destroy,
         Actions.ALIAS: action_callback_alias,
         Actions.INFO: sup.info.callback
@@ -317,11 +314,20 @@ config = JSONConfig(os.path.join(args.config, 'config'))
 o = Options()
 o.site.root = os.path.join(args.root, args.siteroot)
 o.site.domain = args.domain
+o.site.mail = 'webmaster@localhost'
+o.site.alias = args.alias;
 o.project.root = args.root
 o.command = args.command
-o.filehosts = '/etc/hosts'
-o.config = config.getDict()
-o.args = vars(args)
+o.hosts.path = '/etc/hosts'
+#o.config = config.getDict()
+o.config.path = args.config
+o.apache.vhost.tpl = os.path.join(o.config.path, 'vhost.tpl')
+o.apache.config.path = '/etc/apache2'
+o.apache.vhost.path = os.path.join(o.apache.config.path, 'sites-available')
+#o.args = vars(args)
+o.user.name = os.getlogin()
+o.user.uid = int(os.popen("id -u %s" % os.getlogin()).read().strip())
+o.user.gid = int(os.popen("id -g %s" % os.getlogin()).read().strip())
 print(o)
 
 log('Executing {t.bold}{t.green}%s {t.normal}on {t.bold}{t.yellow}%s' % (o.command, o.site.domain))

@@ -1,3 +1,5 @@
+import os
+
 def enum(**enums):
     """
     Return an enum like object.
@@ -15,3 +17,6 @@ def enum_auto(*sequential, **named):
     enums = dict(zip(sequential, range(len(sequential))), **named)
     return type('Enum', (), enums)
 
+def fix_permission(path, mode, uid, gid):
+    os.chmod(path, mode)
+    os.chown(path, uid, gid)
